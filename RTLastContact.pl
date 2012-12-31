@@ -195,8 +195,8 @@ use Config::Simple;
 use Pod::Usage;
 
 #Change lib path to working directory of RT
-#use lib '/usr/share/request-tracker4/lib/'; 
-use lib '/opt/rt4/lib/'; 
+use lib '/usr/share/request-tracker4/lib/'; 
+#use lib '/opt/rt4/lib/'; 
 #use lib '/local/rt4/lib/'; 
 
 use RT;
@@ -473,6 +473,14 @@ $Users->WhoHaveRight(
 print "Owners to be used: " . $config{owners} . "\n" if $verbose;
 }
 
+my @not_requestors;
+@not_requestors = split(',', $config{not_requestor});
+foreach (@not_requestors){
+	s/\A\s+//;
+	s/\s+\z//;
+    } 
+print "additional requestors to be excluded: " . $config{not_requestor} . "\n" if $verbose;
+
 my @exclude_statuses = split(',', $config{exclude_statuses});
 foreach (@exclude_statuses){
     s/\A\s+//;
@@ -492,11 +500,12 @@ printf $fh ("%-9s %-7s %-7s %-7s %-7s %-7s %-7s %-7s %-7s\n", "owner", @dates);
 
 foreach my $user(@users){
     my @stats; 
-        $user = substr($user, 0, 9);
+       my $tempuser = substr($user, 0, 9);
     foreach my $time(@dates){
 	 my $temp_query; 
 	 $temp_query = RTreport::owner($temp_query, $user);
 	 $temp_query = RTreport::not_requestors($temp_query, @users);
+         $temp_query = RTreport::not_requestors($temp_query, @not_requestors);
 	 $temp_query = RTreport::not_status($temp_query, @exclude_statuses);
 	 $temp_query = RTreport::limit_by_time($temp_query, $time);
 	 if($ioa){
@@ -512,7 +521,7 @@ foreach my $user(@users){
 	 push(@stats, $sqltickets->Count());
     }
    
-    printf $fh ("%-9s %-7s %-7s %-7s %-7s %-7s %-7s %-7s %-7s\n", $user, @stats);
+    printf $fh ("%-9s %-7s %-7s %-7s %-7s %-7s %-7s %-7s %-7s\n", $tempuser, @stats);
 }
 
 =pod
@@ -542,17 +551,18 @@ number of tickets taken from config file
 #Make a list of n number of tickets that are oldest
 unless ($num_tickets < 1){
 print $fh "-" x 79 . "\n";
-printf $fh ("|%-25s|%-51s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n", 
+printf $fh ("|%-25s|%-51s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s\n", 
 "ID", "Subject", 
 "Queue", "Status","Problem Type",
 "Owner", "Creator", "Requestor", 
-"Created", "Last Updated", "Last Contacted"); 
+"Created", "Last Updated", "Last Contacted", "Due"); 
 print $fh "-" x 79 . "\n";
 
 #Modify this area to change the query
 my $query;
 my $count;
 $query = RTreport::not_requestors($query, @users);
+$query = RTreport::not_requestors($query, @not_requestors);
 $query = RTreport::not_status($query, @exclude_statuses);
 $query = RTreport::add_queue($query, 'ioa');
 
@@ -572,7 +582,7 @@ my $queue_database = new RT::Queue($RT::SystemUser);
 my $counter=0;
 foreach (1..$count){
     #Variables are self explanatory 
-    $counter = $counter + 1;
+    $counter++;
     my $ticket = $sqltickets->Next();
     my $id = $ticket->Id;
     my $subject = $ticket->Subject;
@@ -606,7 +616,9 @@ foreach (1..$count){
     my $nchars = 25 - length($id);
     if ($html) {$id = "<a href=\"$urlTicket=$id \">$id</a>" . " " x $nchars};
 
-    printf $fh ("|%-8s\n|%-25s|%-51s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n", $counter, $id, $subject, $queue, $status, $CFvalue1, $owner, $creator, $requestor, $created, $updated, $told);
+    my $due = $ticket->Due;
+
+    printf $fh ("|%-8s\n|%-25s|%-51s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s\n", $counter, $id, $subject, $queue, $status, $CFvalue1, $owner, $creator, $requestor, $created, $updated, $told, $due);
     print $fh "-" x 79 . "\n";
     
 }
