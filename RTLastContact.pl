@@ -575,7 +575,7 @@ unless ($num_tickets < 1){
 	    } else {
 		my $outfile_format = "txt";  
 		if ($html) {$outfile_format = "html"};
-		$outfile = "${outpath}RTLastContact_$date_stamp_$user.$outfile_format";
+		$outfile = "${outpath}RTLastContact_${date_stamp}_$user.$outfile_format";
 		print "Output file: ", $outfile,"\n";
 		open $fh, ">>", "$outfile";
 	    }
@@ -592,7 +592,7 @@ unless ($num_tickets < 1){
 
        }else{
 	    #Assume that we are appending onto a currently used file
-	    open $fh, ">", "$outfileforall";
+	    open $fh, ">", "$outpathforall";
 	}
 	$query = RTreport::not_requestors($query, @users);
 	$query = RTreport::not_requestors($query, @not_requestors);
