@@ -351,6 +351,7 @@ my ($date_stamp, $date_time);
 my $no_folder;
 my $queue;
 my $use_database;
+my $outpathforall;
 $date_time = DateTime->from_epoch( epoch => time );
 $date_stamp = $date_time->ymd('');
 
@@ -422,6 +423,7 @@ if ($ARGV[0]){
     print "Output file: ", $outfile,"\n";
     open $fh, ">", "$outfile";
   }
+$outpathforall = $outpath;
 
 #Give contextual details for report
 if ($html) {print $fh "<pre>\n"};
@@ -550,81 +552,113 @@ number of tickets taken from config file
 
 #Make a list of n number of tickets that are oldest
 unless ($num_tickets < 1){
-print $fh "-" x 79 . "\n";
-printf $fh ("|%-25s|%-51s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s\n", 
-"ID", "Subject", 
-"Queue", "Status","Problem Type",
-"Owner", "Creator", "Requestor", 
-"Created", "Last Updated", "Last Contacted", "Due"); 
-print $fh "-" x 79 . "\n";
+    print $fh "-" x 79 . "\n";
+    printf $fh ("|%-25s|%-51s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s\n", 
+		"ID", "Subject", 
+		"Queue", "Status","Problem Type",
+		"Owner", "Creator", "Requestor", 
+		"Created", "Last Updated", "Last Contacted", "Due"); 
+    print $fh "-" x 79 . "\n";
 
 #Modify this area to change the query
-my $query;
-my $count;
-$query = RTreport::not_requestors($query, @users);
-$query = RTreport::not_requestors($query, @not_requestors);
-$query = RTreport::not_status($query, @exclude_statuses);
-$query = RTreport::add_queue($query, 'ioa');
+    my $query;
+    my $count;
 
-print $query . "\n" if $verbose;
-$sqltickets->FromSQL($query);
-$sqltickets->OrderBy(FIELD => 'Told', 
+    foreach my $user(@users){
+	$query = "";
+	unless($user eq "%"){
+	    $query = RTreport::owner($query, $user);
+	    if ($ARGV[0]){
+		$outfile = "$outpath$user$ARGV[0]";
+		print "Output file: ", $outfile;
+		open $fh, ">", "$outfile";
+	    } else {
+		my $outfile_format = "txt";  
+		if ($html) {$outfile_format = "html"};
+		$outfile = "${outpath}RTLastContact_$date_stamp_$user.$outfile_format";
+		print "Output file: ", $outfile,"\n";
+		open $fh, ">>", "$outfile";
+	    }
+	    #Give contextual details for report
+	    if ($html) {print $fh "<pre>\n"};
+	    print $fh "User: " . getlogin() . "\n";
+	    print $fh "Server Host: $host \n"; 
+	    print $fh "RTLastContact v4\n";
+	    print $fh "RT version: $RT::VERSION\n";
+	    print $fh localtime() . "\n"; #Date used to inform reader of when report was written
+	    print $fh "Logdir: ",RT->Config->Get( 'LogDir' ),"\n";
+	    print $fh "DatabaseType: ", RT->Config->Get( 'DatabaseType' ),"\n";
+	    print $fh "\n\nOwner to be detailed: $user\n";
+
+       }else{
+	    #Assume that we are appending onto a currently used file
+	    open $fh, ">", "$outfileforall";
+	}
+	$query = RTreport::not_requestors($query, @users);
+	$query = RTreport::not_requestors($query, @not_requestors);
+	$query = RTreport::not_status($query, @exclude_statuses);
+	$query = RTreport::add_queue($query, 'ioa');
+
+	print $query . "\n" if $verbose;
+	$sqltickets->FromSQL($query);
+	$sqltickets->OrderBy(FIELD => 'Told', 
 		     ORDER => 'ASC');
-if ($num_tickets > $sqltickets->Count()){
-        $count =  $sqltickets->Count();
-    } else {
-	$count = $config{number_of_tickets}
+	if ($num_tickets > $sqltickets->Count()){
+	    $count =  $sqltickets->Count();
+	} else {
+	    $count = $config{number_of_tickets}
 	};
-my $User_name = RT::User->new($RT::SystemUser);
-my $queue_database = new RT::Queue($RT::SystemUser);
+	my $User_name = RT::User->new($RT::SystemUser);
+	my $queue_database = new RT::Queue($RT::SystemUser);
 #my $CustomFields = RT::CustomField->new($RT::SystemUser); # store custom fields
 
-my $counter=0;
-foreach (1..$count){
-    #Variables are self explanatory 
-    $counter++;
-    my $ticket = $sqltickets->Next();
-    my $id = $ticket->Id;
-    my $subject = $ticket->Subject;
-    $subject = substr($subject, 0, 50);
-    my $requestor = join(' ',($ticket->Requestors->MemberEmailAddresses));
-    $User_name->Load($ticket->Owner);
-    my $owner = $User_name->Name;
-    my $queue = $ticket->QueueObj->Name;
-    my $created = $ticket->Created;
-    $created =~ m/(\d\d\d\d)-(\d\d)-(\d\d)/;
-    my $status = $ticket->Status;
-    my $created_date = DateTime->new(
-	year =>$1,
-	month => $2,
-	day =>$3);
-    my $told = $ticket->Told;
-    my $updated = $ticket->LastUpdated;
-    my $difference = $created_date->delta_days($date_time);
+	my $counter=0;
+	foreach (1..$count){
+	    #Variables are self explanatory 
+	    $counter++;
+	    my $ticket = $sqltickets->Next();
+	    my $id = $ticket->Id;
+	    my $subject = $ticket->Subject;
+	    $subject = substr($subject, 0, 50);
+	    my $requestor = join(' ',($ticket->Requestors->MemberEmailAddresses));
+	    $User_name->Load($ticket->Owner);
+	    my $owner = $User_name->Name;
+	    my $queue = $ticket->QueueObj->Name;
+	    my $created = $ticket->Created;
+	    $created =~ m/(\d\d\d\d)-(\d\d)-(\d\d)/;
+	    my $status = $ticket->Status;
+	    my $created_date = DateTime->new(
+		year =>$1,
+		month => $2,
+		day =>$3);
+	    my $told = $ticket->Told;
+	    my $updated = $ticket->LastUpdated;
+	    my $difference = $created_date->delta_days($date_time);
     #$told = "Not told since created" if $told eq "1970-01-01 00:00:00";
-    $created .= $difference->weeks;
-    $User_name->Load($ticket->Creator);
-    my $creator = $User_name->Name;    
+	    $created .= $difference->weeks;
+	    $User_name->Load($ticket->Creator);
+	    my $creator = $User_name->Name;    
 
-    my $CustomFields = $ticket->QueueObj->TicketCustomFields();
-    my $CustomField = $CustomFields->Next(); 
-    my $CFname1 = $CustomField->Name;
+	    my $CustomFields = $ticket->QueueObj->TicketCustomFields();
+	    my $CustomField = $CustomFields->Next(); 
+	    my $CFname1 = $CustomField->Name;
     #my $CFvalue1 = 'test';
-    my $CFvalue1 = $ticket->FirstCustomFieldValue($CFname1); 
+	    my $CFvalue1 = $ticket->FirstCustomFieldValue($CFname1); 
     
     # needs some formatting using the number of characters in $id
-    my $nchars = 25 - length($id);
-    if ($html) {$id = "<a href=\"$urlTicket=$id \">$id</a>" . " " x $nchars};
+	    my $nchars = 25 - length($id);
+	    if ($html) {$id = "<a href=\"$urlTicket=$id \">$id</a>" . " " x $nchars};
 
-    my $due = $ticket->Due;
+	    my $due = $ticket->Due;
 
-    printf $fh ("|%-8s\n|%-25s|%-51s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s\n", $counter, $id, $subject, $queue, $status, $CFvalue1, $owner, $creator, $requestor, $created, $updated, $told, $due);
-    print $fh "-" x 79 . "\n";
-    
+	    printf $fh ("|%-8s\n|%-25s|%-51s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s\n", $counter, $id, $subject, $queue, $status, $CFvalue1, $owner, $creator, $requestor, $created, $updated, $told, $due);
+	    print $fh "-" x 79 . "\n";
+	}
+	print $fh "</pre>\n" if ($html);
+	close $fh;
+    }
 }
-}
 
-if ($html) {print $fh "</pre>\n"};
 
 print "Programme was successful. Output can be found in $outfile\n";
 		     
