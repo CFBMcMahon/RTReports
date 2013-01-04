@@ -414,17 +414,18 @@ my $fh;
 my $outfile;
 if ($ARGV[0]){
     $outfile = "$outpath$ARGV[0]";
-    print "Output file: ", $outfile;
+    print "Output file for main: ", $outfile;
     open $fh, ">", "$outfile";
   } else {
     my $outfile_format = "txt";  
     if ($html) {$outfile_format = "html"};
     $outfile = "${outpath}RTLastContact_$date_stamp.$outfile_format";
-    print "Output file: ", $outfile,"\n";
+    print "Output file for main: ", $outfile,"\n";
     open $fh, ">", "$outfile";
   }
-$outpathforall = $outpath;
+$outpathforall = $outfile;
 
+print "Printing regular RT details to main file\n";
 #Give contextual details for report
 if ($html) {print $fh "<pre>\n"};
 print $fh "User: " . getlogin() . "\n";
@@ -454,6 +455,7 @@ print "Queues: " . $config{queue} ."\n" if $verbose;
 
 my $sqltickets = new RT::Tickets($RT::SystemUser);
 
+print "Generating arrays composed of owners and other query details\n";
 #Retrieve owner names from database or config file
 my @users;
 if ($use_database){
@@ -492,7 +494,7 @@ print "Statuses to be excluded: ". $config{exclude_statuses} . "\n" if $verbose;
 
 print $fh "Statuses to be excluded: ". $config{exclude_statuses} . "\n";
 
-
+print "Printing basic table details to main file\n";
 
 print $fh "Tickets where requestor has not been contacted for more than the specified time\n";
 
@@ -501,6 +503,7 @@ my @dates = ( "total", "7 days", "14 days", "21 days", "28 days", "2 mon", "3 mo
 printf $fh ("%-9s %-7s %-7s %-7s %-7s %-7s %-7s %-7s %-7s\n", "owner", @dates);
 
 foreach my $user(@users){
+    print "Generating query for $user and printing to main file\n";
     my @stats; 
        my $tempuser = substr($user, 0, 9);
     foreach my $time(@dates){
@@ -551,14 +554,11 @@ number of tickets taken from config file
 =cut
 
 #Make a list of n number of tickets that are oldest
+
+close $fh;
 unless ($num_tickets < 1){
-    print $fh "-" x 79 . "\n";
-    printf $fh ("|%-25s|%-51s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s\n", 
-		"ID", "Subject", 
-		"Queue", "Status","Problem Type",
-		"Owner", "Creator", "Requestor", 
-		"Created", "Last Updated", "Last Contacted", "Due"); 
-    print $fh "-" x 79 . "\n";
+    
+    print "Now generating individual list of tickets for each owner\n\n";
 
 #Modify this area to change the query
     my $query;
@@ -570,14 +570,12 @@ unless ($num_tickets < 1){
 	    $query = RTreport::owner($query, $user);
 	    if ($ARGV[0]){
 		$outfile = "$outpath$user$ARGV[0]";
-		print "Output file: ", $outfile;
 		open $fh, ">", "$outfile";
 	    } else {
 		my $outfile_format = "txt";  
 		if ($html) {$outfile_format = "html"};
 		$outfile = "${outpath}RTLastContact_${date_stamp}_$user.$outfile_format";
-		print "Output file: ", $outfile,"\n";
-		open $fh, ">>", "$outfile";
+		open $fh, ">", "$outfile";
 	    }
 	    #Give contextual details for report
 	    if ($html) {print $fh "<pre>\n"};
@@ -592,12 +590,21 @@ unless ($num_tickets < 1){
 
        }else{
 	    #Assume that we are appending onto a currently used file
-	    open $fh, ">", "$outpathforall";
+	   open $fh, ">>", "$outpathforall";
 	}
+	print "Generating ticket report for owner $user with oldest tickets: $outfile\n";
 	$query = RTreport::not_requestors($query, @users);
 	$query = RTreport::not_requestors($query, @not_requestors);
 	$query = RTreport::not_status($query, @exclude_statuses);
 	$query = RTreport::add_queue($query, 'ioa');
+
+	print $fh "-" x 79 . "\n";
+	printf $fh ("|%-25s|%-51s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s\n", 
+		"ID", "Subject", 
+		"Queue", "Status","Problem Type",
+		"Owner", "Creator", "Requestor", 
+		"Created", "Last Updated", "Last Contacted", "Due"); 
+	print $fh "-" x 79 . "\n";
 
 	print $query . "\n" if $verbose;
 	$sqltickets->FromSQL($query);
@@ -613,6 +620,7 @@ unless ($num_tickets < 1){
 #my $CustomFields = RT::CustomField->new($RT::SystemUser); # store custom fields
 
 	my $counter=0;
+	print $fh "No tickets present\n" if $count < 1;
 	foreach (1..$count){
 	    #Variables are self explanatory 
 	    $counter++;
@@ -660,5 +668,5 @@ unless ($num_tickets < 1){
 }
 
 
-print "Programme was successful. Output can be found in $outfile\n";
+print "Programme was successful.\n";
 		     
