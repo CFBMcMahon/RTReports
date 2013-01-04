@@ -193,6 +193,8 @@ use Getopt::Long;
 use DateTime;
 use Config::Simple;
 use Pod::Usage;
+use Date::Calc qw(:all);
+use DateTime;
 
 #Change lib path to working directory of RT
 use lib '/usr/share/request-tracker4/lib/'; 
@@ -381,6 +383,7 @@ my $password = $config{password};
 my $type = $config{type};
 my $logdir = $config{logdir};
 my $num_tickets = $config{number_of_tickets};
+my $rturl = $config{rturl};
 #my $lib = $config{lib};
 
 print "RT server hostname: $host\n";
@@ -407,7 +410,7 @@ RT::Init();
 
 my $html=1;
 
-my $urlTicket = "https://helpdesk.ast.cam.ac.uk/Ticket/Display.html?id";
+my $urlTicket = "${rturl}Ticket/Display.html?id";
 
 #File to be used for output
 my $fh;
@@ -563,6 +566,7 @@ unless ($num_tickets < 1){
 #Modify this area to change the query
     my $query;
     my $count;
+    my $spec_space = " " x 25;
 
     foreach my $user(@users){
 	$query = "";
@@ -599,11 +603,11 @@ unless ($num_tickets < 1){
 	$query = RTreport::add_queue($query, 'ioa');
 
 	print $fh "-" x 79 . "\n";
-	printf $fh ("|%-25s|%-51s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s\n", 
+	printf $fh ("|%-25s|%-51s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|$spec_space|\n", 
 		"ID", "Subject", 
 		"Queue", "Status","Problem Type",
 		"Owner", "Creator", "Requestor", 
-		"Created", "Last Updated", "Last Contacted", "Due"); 
+		"Created", "Last Updated", "Last Contacted", "Due", "Last Contacted (days)"); 
 	print $fh "-" x 79 . "\n";
 
 	print $query . "\n" if $verbose;
@@ -635,15 +639,32 @@ unless ($num_tickets < 1){
 	    my $created = $ticket->Created;
 	    $created =~ m/(\d\d\d\d)-(\d\d)-(\d\d)/;
 	    my $status = $ticket->Status;
+	    my $difference = "unknown";
 	    my $created_date = DateTime->new(
 		year =>$1,
 		month => $2,
 		day =>$3);
+	    if($created eq "1970-01-01 00:00:00"){
+		$created = "(Not set)";
+	    }	
 	    my $told = $ticket->Told;
+	    $told =~ m/(\d\d\d\d)-(\d\d)-(\d\d)/;
+	    my $told_date = DateTime->new(
+		year =>$1,
+		month => $2,
+		day =>$3);
+	    if($told eq "1970-01-01 00:00:00"){
+		$told = "(Not set)";
+		$difference = "(Not set)";
+	    }else{
+		$difference = abs(Delta_Days($date_time->year, $date_time->month, $date_time->day, 
+					 $told_date->year, $told_date->month, $told_date->day));
+	    }
 	    my $updated = $ticket->LastUpdated;
-	    my $difference = $created_date->delta_days($date_time);
+	    if($updated eq "1970-01-01 00:00:00"){
+		$updated = "(Not set)";
+	    }
     #$told = "Not told since created" if $told eq "1970-01-01 00:00:00";
-	    $created .= $difference->weeks;
 	    $User_name->Load($ticket->Creator);
 	    my $creator = $User_name->Name;    
 
@@ -658,8 +679,11 @@ unless ($num_tickets < 1){
 	    if ($html) {$id = "<a href=\"$urlTicket=$id \">$id</a>" . " " x $nchars};
 
 	    my $due = $ticket->Due;
+	    if($due eq "1970-01-01 00:00:00"){
+		$due = "(Not set)";
+	    }
 
-	    printf $fh ("|%-8s\n|%-25s|%-51s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s\n", $counter, $id, $subject, $queue, $status, $CFvalue1, $owner, $creator, $requestor, $created, $updated, $told, $due);
+	    printf $fh ("|%-8s${spec_space}${spec_space}                   |\n|%-25s|%-51s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s$spec_space |\n", $counter, $id, $subject, $queue, $status, $CFvalue1, $owner, $creator, $requestor, $created, $updated, $told, $due, "$difference day(s) ago");
 	    print $fh "-" x 79 . "\n";
 	}
 	print $fh "</pre>\n" if ($html);
