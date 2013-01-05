@@ -168,13 +168,14 @@ my @queues = (q('IoA'));
 #my @queues=(q('Planning')); # RT queue to operate on
 #my @queues=(q('%')); # RT queue to operate on
 
+my @queues = split(',', $config{queue});
+foreach (@queues){
+    s/\A\s+//;
+    s/\s+\z//;
+    $_ = "'$_'";
+}
 
-my @owners = split(',', $config{owners});
-    foreach (@owners){
-	s/\A\s+//;
-	s/\s+\z//;
-	$_ = "'$_'";
-    } 
+
 
 my @owners = (q('adb'), q('gbell'), q('nrm'),q('sc'),q('atb'),q('hss'));
 my @owners = (q('adb'), q('gbell'), q('nrm'),q('sc'));
@@ -184,6 +185,12 @@ my @owners = (q('%'),q('adb'), q('gbell'), q('nrm'),q('sc'),q('atb'),q('hss'));
 # 2012-12-12: rgm added rmj
 my @owners = (q('%'),q('adb'), q('gbell'), q('nrm'),q('sc'),q('rmj'));
 
+my @owners = split(',', $config{owners});
+    foreach (@owners){
+	s/\A\s+//;
+	s/\s+\z//;
+	$_ = "'$_'";
+    } 
 
 my $cycles=12; # how many months to report on
 my $thismonth=1; # include current month in graph?
