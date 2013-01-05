@@ -98,7 +98,6 @@ $start_date=$yearstamp . '-' . $monthstamp;
 
 print "start_date: $start_date\n";
 
-my $outpath = '/home/conall/';
 #my $outpath = '/home/rgm/public_html/coc/rt-metrics/2010/';
 #my $outpath = '/home/rgm/public_html/coc/rt-metrics/2011/';
 
@@ -170,6 +169,12 @@ my @queues = (q('IoA'));
 #my @queues=(q('%')); # RT queue to operate on
 
 
+my @owners = split(',', $config{owners});
+    foreach (@owners){
+	s/\A\s+//;
+	s/\s+\z//;
+	$_ = "'$_'";
+    } 
 
 my @owners = (q('adb'), q('gbell'), q('nrm'),q('sc'),q('atb'),q('hss'));
 my @owners = (q('adb'), q('gbell'), q('nrm'),q('sc'));
