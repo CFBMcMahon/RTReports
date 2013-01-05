@@ -354,6 +354,7 @@ my $no_folder;
 my $queue;
 my $use_database;
 my $outpathforall;
+my $owner;
 $date_time = DateTime->from_epoch( epoch => time );
 $date_stamp = $date_time->ymd('');
 
@@ -366,7 +367,8 @@ GetOptions('help|?' => \$help, man => \$man,
            'owner=s' => \$specific_owner,
            'verbose' => \$verbose,
            'f' => \$no_folder,
-           'd' => \$use_database) or pod2usage(2);
+           'd' => \$use_database,
+           'owner' => \$owner) or pod2usage(2);
 
 pod2usage(1) if $help;
 pod2usage(-exitstatus => 0, -verbose => 2) if $man;
@@ -477,7 +479,7 @@ $Users->WhoHaveRight(
 	s/\A\s+//;
 	s/\s+\z//;
     } 
-print "Owners to be used: " . $config{owners} . "\n" if $verbose;
+    print "Owners to be used: " . $config{owners} . "\n" if $verbose; 
 }
 
 my @not_requestors;
@@ -506,9 +508,12 @@ my @dates = ( "total", "7 days", "14 days", "21 days", "28 days", "2 mon", "3 mo
 printf $fh ("%-9s %-7s %-7s %-7s %-7s %-7s %-7s %-7s %-7s\n", "owner", @dates);
 
 foreach my $user(@users){
+    if(!$owner && $user ne '%'){
+	next;
+    }
     print "Generating query for $user and printing to main file\n";
     my @stats; 
-       my $tempuser = substr($user, 0, 9);
+    my $tempuser = substr($user, 0, 9);
     foreach my $time(@dates){
 	 my $temp_query; 
 	 $temp_query = RTreport::owner($temp_query, $user);
@@ -519,6 +524,7 @@ foreach my $user(@users){
 	 if($ioa){
 	     $temp_query = RTreport::add_queue($temp_query, 'IOA');
 	 } elsif ($queue){
+	     #exclude queue
 	 } else {
 	     $temp_query = RTreport::add_queue($temp_query, @queue)
 	 }
@@ -571,6 +577,9 @@ unless ($num_tickets < 1){
     foreach my $user(@users){
 	$query = "";
 	unless($user eq "%"){
+	    if(!$owner){
+		next;
+	    }
 	    $query = RTreport::owner($query, $user);
 	    if ($ARGV[0]){
 		$outfile = "$outpath$user$ARGV[0]";
@@ -600,7 +609,13 @@ unless ($num_tickets < 1){
 	$query = RTreport::not_requestors($query, @users);
 	$query = RTreport::not_requestors($query, @not_requestors);
 	$query = RTreport::not_status($query, @exclude_statuses);
-	$query = RTreport::add_queue($query, 'ioa');
+	if($ioa){
+	     $query = RTreport::add_queue($query, 'IOA');
+	 } elsif ($queue){
+	     #exclude queue
+	 } else {
+	     $query = RTreport::add_queue($query, @queue)
+	 }
 
 	print $fh "-" x 79 . "\n";
 	printf $fh ("|%-25s|%-51s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|$spec_space|\n", 
