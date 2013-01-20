@@ -368,7 +368,7 @@ GetOptions('help|?' => \$help, man => \$man,
            'verbose' => \$verbose,
            'f' => \$no_folder,
            'd' => \$use_database,
-           'owner' => \$owner) or pod2usage(2);
+           'owner' => \$owner or pod2usage(2);
 
 pod2usage(1) if $help;
 pod2usage(-exitstatus => 0, -verbose => 2) if $man;
@@ -508,7 +508,7 @@ my @dates = ( "total", "7 days", "14 days", "21 days", "28 days", "2 mon", "3 mo
 printf $fh ("%-9s %-7s %-7s %-7s %-7s %-7s %-7s %-7s %-7s\n", "owner", @dates);
 
 foreach my $user(@users){
-    if(!$owner && $user ne '%'){
+    if($owner && $user ne '%'){
 	next;
     }
     print "Generating query for $user and printing to main file\n";
@@ -577,7 +577,7 @@ unless ($num_tickets < 1){
     foreach my $user(@users){
 	$query = "";
 	unless($user eq "%"){
-	    if(!$owner){
+	    if($owner){
 		next;
 	    }
 	    $query = RTreport::owner($query, $user);
