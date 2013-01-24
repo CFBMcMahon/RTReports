@@ -343,6 +343,7 @@ true/false value which, if true, will use the databse to retrieve owner names, r
 =back
 
 =cut
+my $version = 0.4.2;
 
 my %config;
 my $specific_owner = '';
@@ -433,7 +434,7 @@ print "Printing regular RT details to main file\n";
 if ($html) {print $fh "<pre>\n"};
 print $fh "User: " . getlogin() . "\n";
 print $fh "Server Host: $host \n"; 
-print $fh "RTLastContact v4\n";
+print $fh "RTLastContact $version";
 print $fh "RT version: $RT::VERSION\n";
 print $fh localtime() . "\n"; #Date used to inform reader of when report was written
 print $fh "Logdir: ",RT->Config->Get( 'LogDir' ),"\n";
@@ -444,7 +445,7 @@ print $fh "DatabaseType: ", RT->Config->Get( 'DatabaseType' ),"\n";
 my @queue
 
 if(!$config{queue}){
-    push(@queue, 'general');
+    push(@queue, '%');
     } else {
 	@queue = split(',', $config{queue});
 	foreach (@queue){
@@ -526,8 +527,16 @@ foreach my $user(@users){
          $temp_query = RTreport::not_requestors($temp_query, @not_requestors);
 	 $temp_query = RTreport::not_status($temp_query, @exclude_statuses);
 	 $temp_query = RTreport::limit_by_time($temp_query, $time);
-	 if(@queue){
-	     $temp_query = RTreport::add_queue($temp_query, @queue)
+	 if($queue[0]){
+	     my $temp = 1;
+	     foreach(@queue){
+		 $temp = 0 if $_ eq '%';		 
+	     }
+	     if ($temp){
+		 $temp_query = RTreport::add_queue($temp_query, @queue);
+	     }else{
+		 $temp_query = RTreport::add_queue($temp_query, @queue);
+	     }
 	 }
 	 if ($verbose){
 	     print "$temp_query\n";
@@ -610,13 +619,7 @@ unless ($num_tickets < 1){
 	$query = RTreport::not_requestors($query, @users);
 	$query = RTreport::not_requestors($query, @not_requestors);
 	$query = RTreport::not_status($query, @exclude_statuses);
-	if($ioa){
-	     $query = RTreport::add_queue($query, 'IOA');
-	 } elsif ($queue){
-	     #exclude queue
-	 } else {
-	     $query = RTreport::add_queue($query, @queue)
-	 }
+	$query = RTreport::add_queue($query, @queue);
 
 	print $fh "-" x 79 . "\n";
 	printf $fh ("|%-25s|%-51s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|$spec_space|\n", 
