@@ -195,6 +195,9 @@ use Config::Simple;
 use Pod::Usage;
 use Date::Calc qw(:all);
 use DateTime;
+use File::stat;
+
+use Fcntl qw(:mode);
 
 #Change lib path to working directory of RT
 use lib '/usr/share/request-tracker4/lib/'; 
@@ -356,6 +359,7 @@ my $use_database;
 my $outpathforall;
 my $owner;
 my $default = 'general';
+my $configfile='RTconfig.ini';
 $date_time = DateTime->from_epoch( epoch => time );
 $date_stamp = $date_time->ymd('');
 
@@ -372,7 +376,14 @@ GetOptions('help|?' => \$help, man => \$man,
 pod2usage(1) if $help;
 pod2usage(-exitstatus => 0, -verbose => 2) if $man;
 
-Config::Simple->import_from( 'RTconfig.ini', \%config) or die Config::Simple->error();
+Config::Simple->import_from( $configfile, \%config) or die Config::Simple->error();
+
+
+my $mode = stat($configfile)->mode;
+
+my $allCanRead = ($mode & S_IROTH);  # Others can read
+
+if ($allCanRead) {print '**WARNING** Config file: ' . $configfile . ' is world readable' . "\n"};
 
 $outpath = $config{outpath};
 
