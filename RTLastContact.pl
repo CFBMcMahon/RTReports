@@ -345,7 +345,6 @@ true/false value which, if true, will use the databse to retrieve owner names, r
 =cut
 
 my %config;
-my $ioa = '';
 my $specific_owner = '';
 my $outpath;
 my $verbose;
@@ -355,6 +354,7 @@ my $queue;
 my $use_database;
 my $outpathforall;
 my $owner;
+my $default = 'general';
 $date_time = DateTime->from_epoch( epoch => time );
 $date_stamp = $date_time->ymd('');
 
@@ -362,8 +362,6 @@ my $help;
 my $man;
 
 GetOptions('help|?' => \$help, man => \$man,
-           'q' => \$ioa,
-           'noqueue' => \$queue,
            'owner=s' => \$specific_owner,
            'verbose' => \$verbose,
            'f' => \$no_folder,
@@ -443,16 +441,18 @@ print $fh "DatabaseType: ", RT->Config->Get( 'DatabaseType' ),"\n";
 
 #Figure out whether to include a queue or not and whether it is a result of the getopt feature or the config file
 
-my @queue = split(',', $config{queue});
-foreach (@queue){
-    s/\A\s+//;
-    s/\s+\z//;
+my @queue
+
+if(!$config{queue}){
+    push(@queue, 'general');
+    } else {
+	@queue = split(',', $config{queue});
+	foreach (@queue){
+	    s/\A\s+//;
+	    s/\s+\z//;
 }
-if($ioa){
-    print $fh "Queue: IOA\n"; #IOA is enabled
-} else {
-   print $fh "Queues: " . $config{queue} ."\n"; #Value taken from config
-}
+
+print $fh "Queues: " . $config{queue} ."\n"; #Value taken from config}
 
 print "Queues: " . $config{queue} ."\n" if $verbose;
 
@@ -472,8 +472,13 @@ $Users->WhoHaveRight(
 	push(@users, $User->Name);
     }
     unshift(@users, '%');
+    push(@users, 'nobody');
 
-}else{
+}elsif($specific_owner){
+    $users[0] = $specific_owner;
+
+
+}else {
     @users = split(',', $config{owners});
     foreach (@users){
 	s/\A\s+//;
@@ -521,11 +526,7 @@ foreach my $user(@users){
          $temp_query = RTreport::not_requestors($temp_query, @not_requestors);
 	 $temp_query = RTreport::not_status($temp_query, @exclude_statuses);
 	 $temp_query = RTreport::limit_by_time($temp_query, $time);
-	 if($ioa){
-	     $temp_query = RTreport::add_queue($temp_query, 'IOA');
-	 } elsif ($queue){
-	     #exclude queue
-	 } else {
+	 if(@queue){
 	     $temp_query = RTreport::add_queue($temp_query, @queue)
 	 }
 	 if ($verbose){
