@@ -104,8 +104,8 @@ sub owner {
 	} else {
 	    $query =~ s/^/owner = '$owner'/;
 	}
-	$query;
     }
+    $query;
 }
 
 sub not_requestors {
