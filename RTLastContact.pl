@@ -629,10 +629,10 @@ unless ($num_tickets < 1){
 	   open $fh, ">>", "$outpathforall";
 	}
 	print "Generating ticket report for owner $user with oldest tickets: $outfile\n";
-	$query = RTreport::not_requestors($query, @users);
-	$query = RTreport::not_requestors($query, @not_requestors);
-	$query = RTreport::not_status($query, @exclude_statuses);
-	$query = RTreport::add_queue($query, @queue);
+	$query = RTreports::not_requestors($query, @users);
+	$query = RTreports::not_requestors($query, @not_requestors);
+	$query = RTreports::not_status($query, @exclude_statuses);
+	$query = RTreports::add_queue($query, @queue);
 
 	print $fh "-" x 79 . "\n";
 	printf $fh ("|%-25s|%-51s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|$spec_space|\n", 
