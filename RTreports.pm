@@ -99,10 +99,11 @@ sub owner {
     my $query = shift(@_);
     foreach my $owner (@_){
 	#print $new_owner , "\n";
+	$query .= " AND " if $query;
 	if ($owner =~ m/^%$/){
-	    $query =~ s/^/owner LIKE '%'/;
+	    $query .=  "owner LIKE '%'";
 	} else {
-	    $query =~ s/^/owner = '$owner'/;
+	    $query .=  "owner = '$owner'";
 	}
     }
     $query;

@@ -552,7 +552,7 @@ foreach my $user(@users){
 	     }
 	 }
 	 if ($verbose){
-	     print "$temp_query\n\n";
+	     print "$temp_query\n";
 	 }
 	 $sqltickets->FromSQL($temp_query);
 	 push(@stats, $sqltickets->Count());
