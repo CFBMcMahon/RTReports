@@ -102,9 +102,10 @@ sub owner {
 	if ($owner =~ m/^%$/){
 	    $query =~ s/^/owner LIKE '%'/;
 	} else {
-	    $query =~ s/^/owner = '$new_owner'/;
+	    $query =~ s/^/owner = '$owner'/;
 	}
 	$query;
+    }
 }
 
 sub not_requestors {
@@ -125,7 +126,7 @@ sub not_requestors {
 } 
 
 sub limit_by_time {
-    my($query, $time) = (@_[0] , @_[1]);
+    my($query, $time) = (@_[0], @_[1]);
     if ($time eq "total") {
 	     #do nothing
     } elsif ($time eq "7 days") {
@@ -151,7 +152,9 @@ sub limit_by_time {
 sub not_status {
     my $query = shift(@_);
     foreach(@_){
-	unless ($query eq ""){ $query .= " AND status != '$_'";}
+	unless ($query eq ""){ 
+	    $query .= " AND status != '$_'";
+	}
     }
     $query;
 }
@@ -177,10 +180,11 @@ sub add_queue {
      
 	 foreach(@_){
 	    $build .= " OR queue = '$_'";
-  
-	 }
+  	 }
+     
 	 $build .= ") ";
 	 return $query .= $build;
+     }
 }
     
 sub spec_status {

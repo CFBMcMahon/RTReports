@@ -206,7 +206,7 @@ use lib '/usr/share/request-tracker4/lib/';
 
 use RT;
 
-use RTreport;
+use RTreports;
 
 use File::Path;
 use Sys::Hostname;
@@ -371,7 +371,8 @@ GetOptions('help|?' => \$help, man => \$man,
            'verbose' => \$verbose,
            'f' => \$no_folder,
            'd' => \$use_database,
-           'owner' => \$owner or pod2usage(2);
+           'owner' => \$owner) or pod2usage(2);
+	  
 
 pod2usage(1) if $help;
 pod2usage(-exitstatus => 0, -verbose => 2) if $man;
@@ -453,7 +454,7 @@ print $fh "DatabaseType: ", RT->Config->Get( 'DatabaseType' ),"\n";
 
 #Figure out whether to include a queue or not and whether it is a result of the getopt feature or the config file
 
-my @queue
+my @queue;
 
 if(!$config{queue}){
     push(@queue, '%');
@@ -462,6 +463,7 @@ if(!$config{queue}){
 	foreach (@queue){
 	    s/\A\s+//;
 	    s/\s+\z//;
+	}
 }
 
 print $fh "Queues: " . $config{queue} ."\n"; #Value taken from config}
@@ -533,20 +535,20 @@ foreach my $user(@users){
     my $tempuser = substr($user, 0, 9);
     foreach my $time(@dates){
 	 my $temp_query; 
-	 $temp_query = RTreport::owner($temp_query, $user);
-	 $temp_query = RTreport::not_requestors($temp_query, @users);
-         $temp_query = RTreport::not_requestors($temp_query, @not_requestors);
-	 $temp_query = RTreport::not_status($temp_query, @exclude_statuses);
-	 $temp_query = RTreport::limit_by_time($temp_query, $time);
+	 $temp_query = RTreports::owner($temp_query, $user);
+	 $temp_query = RTreports::not_requestors($temp_query, @users);
+         $temp_query = RTreports::not_requestors($temp_query, @not_requestors);
+	 $temp_query = RTreports::not_status($temp_query, @exclude_statuses);
+	 $temp_query = RTreports::limit_by_time($temp_query, $time);
 	 if($queue[0]){
 	     my $temp = 1;
 	     foreach(@queue){
 		 $temp = 0 if $_ eq '%';		 
 	     }
 	     if ($temp){
-		 $temp_query = RTreport::add_queue($temp_query, @queue);
+		 $temp_query = RTreports::add_queue($temp_query, @queue);
 	     }else{
-		 $temp_query = RTreport::add_queue($temp_query, @queue);
+		 $temp_query = RTreports::add_queue($temp_query, @queue);
 	     }
 	 }
 	 if ($verbose){
@@ -601,7 +603,7 @@ unless ($num_tickets < 1){
 	    if($owner){
 		next;
 	    }
-	    $query = RTreport::owner($query, $user);
+	    $query = RTreports::owner($query, $user);
 	    if ($ARGV[0]){
 		$outfile = "$outpath$user$ARGV[0]";
 		open $fh, ">", "$outfile";
