@@ -346,8 +346,8 @@ true/false value which, if true, will use the databse to retrieve owner names, r
 =back
 
 =cut
-my $version = 0.4.2;
-
+my $version = "0.4.3";
+my $allowners;
 my %config;
 my $specific_owner = '';
 my $outpath;
@@ -366,12 +366,14 @@ $date_stamp = $date_time->ymd('');
 my $help;
 my $man;
 
-GetOptions('help|?' => \$help, man => \$man,
+GetOptions('help|?' => \$help, 
+	   'man' => \$man,
            'owner=s' => \$specific_owner,
            'verbose' => \$verbose,
            'f' => \$no_folder,
            'd' => \$use_database,
-           'owner' => \$owner) or pod2usage(2);
+           'owner' => \$owner,
+           'all' => \$allowners) or pod2usage(2);
 	  
 
 pod2usage(1) if $help;
@@ -446,7 +448,7 @@ print "Printing regular RT details to main file\n";
 if ($html) {print $fh "<pre>\n"};
 print $fh "User: " . getlogin() . "\n";
 print $fh "Server Host: $host \n"; 
-print $fh "RTLastContact $version";
+print $fh "RTLastContact $version\n";
 print $fh "RT version: $RT::VERSION\n";
 print $fh localtime() . "\n"; #Date used to inform reader of when report was written
 print $fh "Logdir: ",RT->Config->Get( 'LogDir' ),"\n";
@@ -572,7 +574,7 @@ up in another. A new datetime object was constructed to calculate how
 long ago a ticket was created, the number given may be up to a week
 off target. Currently, there is no way to edit the output through the
 config, so play around with the query building below if you're
-dissatisfactory results. All of the variables here are self
+having dissatisfactory results. All of the variables here are self
 explanatory, except ones specified
 
 =over 2
@@ -590,12 +592,13 @@ number of tickets taken from config file
 close $fh;
 unless ($num_tickets < 1){
     
-    print "Now generating individual list of tickets for each owner\n\n";
+    print "Now generating individual list of tickets for each owner\n\n" if $allowners;
 
 #Modify this area to change the query
     my $query;
     my $count;
     my $spec_space = " " x 25;
+    
 
     foreach my $user(@users){
 	$query = "";
@@ -627,6 +630,7 @@ unless ($num_tickets < 1){
        }else{
 	    #Assume that we are appending onto a currently used file
 	   open $fh, ">>", "$outpathforall";
+	   print $fh "\nTicket aggregation for all\n";
 	}
 	print "Generating ticket report for owner $user with oldest tickets: $outfile\n";
 	$query = RTreports::not_requestors($query, @users);
@@ -720,6 +724,7 @@ unless ($num_tickets < 1){
 	}
 	print $fh "</pre>\n" if ($html);
 	close $fh;
+	last unless $allowners
     }
 }
 
