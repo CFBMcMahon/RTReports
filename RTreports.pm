@@ -173,19 +173,26 @@ sub add_queue {
      my $build;
      $build = " AND " if $query;
      my $start = shift(@_);
-	 
-     if($start eq '%'){
-	 $build .= "(queue LIKE '%'";
+     
+     if(@_ == 0){
+	if($start eq '%'){
+	    $build .= "queue = '%'";
+	}else{
+	    $build .= "queue = '$start'";
+	}
      }else{
-	 $build .= "(queue = '$start'";
+	 if($start eq '%'){
+	     $build .= "(queue = '%'";
+	 }else{
+	     $build .= "(queue = '$start'";
      
-	 foreach(@_){
-	    $build .= " OR queue = '$_'";
-  	 }
-     
-	 $build .= ") ";
-	 return $query .= $build;
+	     foreach(@_){
+		 $build .= " OR queue = '$_'";
+	     }
+	     $build .= ") ";
+	 }
      }
+     return $query .= $build;
 }
     
 sub spec_status {
