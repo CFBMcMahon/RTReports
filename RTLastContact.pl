@@ -458,9 +458,7 @@ print $fh "DatabaseType: ", RT->Config->Get( 'DatabaseType' ),"\n";
 
 my @queue;
 
-if(!$config{queue}){
-    push(@queue, '%');
-    } else {
+unless(!$config{queue}){
 	@queue = split(',', $config{queue});
 	foreach (@queue){
 	    s/\A\s+//;
