@@ -1,3 +1,4 @@
+my $version = "0.5.0";
 =pod
 
 =head1 FEATURE REQUESTS
@@ -346,7 +347,6 @@ true/false value which, if true, will use the databse to retrieve owner names, r
 =back
 
 =cut
-my $version = "0.4.3";
 my $allowners;
 my %config;
 my $specific_owner = '';
