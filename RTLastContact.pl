@@ -1,4 +1,4 @@
-my $version = "0.5.0";
+my $version = "0.5.1";
 =pod
 
 =head1 FEATURE REQUESTS
@@ -450,6 +450,7 @@ print $fh "User: " . getlogin() . "\n";
 print $fh "Server Host: $host \n"; 
 print $fh "RTLastContact $version\n";
 print $fh "RT version: $RT::VERSION\n";
+print $fh "RTreports version: $RTreports::VERSION\n";
 print $fh localtime() . "\n"; #Date used to inform reader of when report was written
 print $fh "Logdir: ",RT->Config->Get( 'LogDir' ),"\n";
 print $fh "DatabaseType: ", RT->Config->Get( 'DatabaseType' ),"\n";
