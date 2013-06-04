@@ -390,7 +390,7 @@ my $allCanRead = ($mode & S_IROTH);  # Others can read
 if ($allCanRead) {print '**WARNING** Config file: ' . $configfile . ' is world readable' . "\n"};
 
 if($expectedreportsversion ne $RTreports::VERSION){
-    print "**WARNING** RTreports.pm is not the expected version, programme may not work as intended\n";
+    print "**WARNING** Expected RTreports $expectedreportsversion, got RTreports $RTreports::VERSION\n";
 }
 
 $outpath = $config{outpath};
@@ -454,8 +454,8 @@ if ($html) {print $fh "<pre>\n"};
 print $fh "User: " . getlogin() . "\n";
 print $fh "Server Host: $host \n"; 
 print $fh "RTLastContact $version\n";
-print $fh "RT version: $RT::VERSION\n";
-print $fh "RTreports version: $RTreports::VERSION\n";
+print $fh "RT version $RT::VERSION\n";
+print $fh "RTreports.pm $RTreports::VERSION\n";
 print $fh localtime() . "\n"; #Date used to inform reader of when report was written
 print $fh "Logdir: ",RT->Config->Get( 'LogDir' ),"\n";
 print $fh "DatabaseType: ", RT->Config->Get( 'DatabaseType' ),"\n";
