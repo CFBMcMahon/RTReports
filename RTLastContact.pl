@@ -1,4 +1,5 @@
-my $version = "0.5.1";
+my $version = "0.5.2";
+my $expectedreportsversion = "0.4.1";
 =pod
 
 =head1 FEATURE REQUESTS
@@ -387,6 +388,10 @@ my $mode = stat($configfile)->mode;
 my $allCanRead = ($mode & S_IROTH);  # Others can read
 
 if ($allCanRead) {print '**WARNING** Config file: ' . $configfile . ' is world readable' . "\n"};
+
+if($expectedreportsversion ne $RTreports::VERSION){
+    print "**WARNING** RTreports.pm is not the expected version, programme may not work as intended\n";
+}
 
 $outpath = $config{outpath};
 
