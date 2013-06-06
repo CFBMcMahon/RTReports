@@ -1,5 +1,5 @@
 my $version = "0.5.3";
-my $expectedreportsversion = "0.4.1";
+my $expectedreportsversion = "0.4.2";
 =pod
 
 =head1 FEATURE REQUESTS
@@ -547,7 +547,7 @@ foreach my $user(@users){
          $temp_query = RTreports::not_requestors($temp_query, @not_requestors);
 	 $temp_query = RTreports::not_status($temp_query, @exclude_statuses);
 	 $temp_query = RTreports::limit_by_time($temp_query, $time);
-	 $temp_query = RTreports::add_queue($temp_query, @queue) if $queue[0];
+	 $temp_query = RTreports::add_queue($temp_query, @queue); #if $queue[0];
 	 if ($verbose){
 	     print "$temp_query\n";
 	 }
@@ -633,8 +633,7 @@ unless ($num_tickets < 1){
 	$query = RTreports::not_requestors($query, @users);
 	$query = RTreports::not_requestors($query, @not_requestors);
 	$query = RTreports::not_status($query, @exclude_statuses);
-	$query = RTreports::add_queue($query, @queue) if $queue[0];
-	 }
+	$query = RTreports::add_queue($query, @queue);
 
 	print $fh "-" x 79 . "\n";
 	printf $fh ("|%-25s|%-51s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|%-25s|\n|%-25s|%-25s|$spec_space|\n", 

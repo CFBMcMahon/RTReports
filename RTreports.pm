@@ -1,4 +1,3 @@
-our $VERSION = "0.4.1";
 =pod
 
 =head1 NAME
@@ -94,7 +93,7 @@ package RTreports;
 
 # version number accessible as $RTreports::VERSION
 # e.g. print 'RT version: $RTreports::VERSION\n';
-our $VERSION = "0.4.1";
+our $VERSION = "0.4.2";
 
 sub owner {
     my $query = shift(@_);
@@ -171,29 +170,24 @@ sub add_status {
 
 sub add_queue {
      my $query = shift(@_);
+     unless($_[0]){
+	 return $query;
+     }
+
      my $build;
      $build = " AND " if $query;
      my $start = shift(@_);
      
      if(@_ == 0){
-	if($start eq '%'){
-	    $build .= "queue = '%'";
-	}else{
-	    $build .= "queue = '$start'";
-	}
+	 $build .= "queue = '$start'";
      }else{
-	 if($start eq '%'){
-	     $build .= "(queue = '%'";
-	 }else{
-	     $build .= "(queue = '$start'";
-     
-	     foreach(@_){
-		 $build .= " OR queue = '$_'";
+	 $build .= "(queue = '$start'";	     
+	 foreach(@_){
+	     $build .= " OR queue = '$_'";
 	     }
 	     $build .= ") ";
-	 }
-     }
-     return $query .= $build;
+         }
+     $query .= $build;
 }
     
 sub spec_status {
