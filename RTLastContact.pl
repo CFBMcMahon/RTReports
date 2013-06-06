@@ -1,4 +1,4 @@
-my $version = "0.5.2";
+my $version = "0.5.3";
 my $expectedreportsversion = "0.4.1";
 =pod
 
@@ -633,16 +633,7 @@ unless ($num_tickets < 1){
 	$query = RTreports::not_requestors($query, @users);
 	$query = RTreports::not_requestors($query, @not_requestors);
 	$query = RTreports::not_status($query, @exclude_statuses);
-	if($queue[0]){
-	     my $temp = 1;
-	     foreach(@queue){
-		 $temp = 0 if $_ eq '%';		 
-	     }
-	     if ($temp){
-		 $query = RTreports::add_queue($query, @queue);
-	     }else{
-		 $query = RTreports::add_queue($query, @queue);
-	     }
+	$query = RTreports::add_queue($query, @queue) if $queue[0];
 	 }
 
 	print $fh "-" x 79 . "\n";
