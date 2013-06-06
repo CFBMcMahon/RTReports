@@ -373,7 +373,6 @@ GetOptions('help|?' => \$help,
            'verbose' => \$verbose,
            'f' => \$no_folder,
            'd' => \$use_database,
-           'owner' => \$owner,
            'all' => \$allowners) or pod2usage(2);
 	  
 
@@ -464,7 +463,7 @@ print $fh "DatabaseType: ", RT->Config->Get( 'DatabaseType' ),"\n";
 
 my @queue;
 
-unless(!$config{queue}){
+if($config{queue}){
 	@queue = split(',', $config{queue});
 	foreach (@queue){
 	    s/\A\s+//;
@@ -483,7 +482,13 @@ my $sqltickets = new RT::Tickets($RT::SystemUser);
 print "Generating arrays composed of owners and other query details\n";
 #Retrieve owner names from database or config file
 my @users;
-if ($use_database){
+if($specific_owner){
+    @users = split(',', $specific_owner);
+    foreach (@users){
+	s/\A\s+//;
+	s/\s+\z//;
+    } 
+} elsif ($use_database || !$config{owners}){
     my $Users = RT::Users->new( RT->SystemUser );
 $Users->WhoHaveRight(
         Right               => 'OwnTicket',
@@ -494,18 +499,14 @@ $Users->WhoHaveRight(
     unshift(@users, '%');
     push(@users, 'nobody');
 
-}elsif($specific_owner){
-    $users[0] = $specific_owner;
-
-
-}else {
+} else {
     @users = split(',', $config{owners});
     foreach (@users){
 	s/\A\s+//;
 	s/\s+\z//;
     } 
-    print "Owners to be used: " . $config{owners} . "\n" if $verbose; 
 }
+print "Owners to be used: " . @users . "\n" if $verbose; 
 
 my @not_requestors;
 @not_requestors = split(',', $config{not_requestor});
@@ -533,7 +534,7 @@ my @dates = ( "total", "7 days", "14 days", "21 days", "28 days", "2 mon", "3 mo
 printf $fh ("%-9s %-7s %-7s %-7s %-7s %-7s %-7s %-7s %-7s\n", "owner", @dates);
 
 foreach my $user(@users){
-    if($owner && $user ne '%'){
+    if($owner && $user eq '%'){
 	next;
     }
     print "Generating query for $user and printing to main file\n";
@@ -546,17 +547,7 @@ foreach my $user(@users){
          $temp_query = RTreports::not_requestors($temp_query, @not_requestors);
 	 $temp_query = RTreports::not_status($temp_query, @exclude_statuses);
 	 $temp_query = RTreports::limit_by_time($temp_query, $time);
-	 if($queue[0]){
-	     my $temp = 1;
-	     foreach(@queue){
-		 $temp = 0 if $_ eq '%';		 
-	     }
-	     if ($temp){
-		 $temp_query = RTreports::add_queue($temp_query, @queue);
-	     }else{
-		 $temp_query = RTreports::add_queue($temp_query, @queue);
-	     }
-	 }
+	 $temp_query = RTreports::add_queue($temp_query, @queue) if $queue[0];
 	 if ($verbose){
 	     print "$temp_query\n";
 	 }
@@ -602,11 +593,13 @@ unless ($num_tickets < 1){
     my $query;
     my $count;
     my $spec_space = " " x 25;
-    
+
+    #Currently check if first element in owners array has a wildcard, if not, add one to the front.
+    unshift(@users, '%') if $users[0] ne '%';
 
     foreach my $user(@users){
 	$query = "";
-	unless($user eq "%"){
+	if($user ne "%"){
 	    if($owner){
 		next;
 	    }
