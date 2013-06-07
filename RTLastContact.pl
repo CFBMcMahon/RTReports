@@ -1,4 +1,4 @@
-my $version = "0.5.4";
+my $version = "0.5.5";
 my $expectedreportsversion = "0.4.2";
 =pod
 
@@ -431,7 +431,7 @@ my $response = $ua->post($uri."ticket/$ticketNumber",
 if ($response->is_success) {
 $server_version = $response->decoded_content;
 $server_version = substr($server_version, 3, 6);
-$server_version = "RT server v${server_version}" . "\n";
+$server_version = "RT Remote Server v${server_version}" . "\n";
 }
 
 #Create the output pathway for report if it doesn't already exist
@@ -473,7 +473,7 @@ print $fh "-" x 30 . "\n";
 print $fh "User: " . getlogin() . "\n";
 print $fh "Server Host: $host \n";
 print $fh $server_version;
-print $fh "RT v$RT::VERSION\n";
+print $fh "RT Local Client v$RT::VERSION\n";
 print $fh "RTreports.pm v$RTreports::VERSION\n";
 print $fh localtime() . "\n"; #Date used to inform reader of when report was written
 print $fh "Logdir: ",RT->Config->Get( 'LogDir' ),"\n";
