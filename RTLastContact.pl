@@ -1,4 +1,4 @@
-my $version = "0.5.3";
+my $version = "0.5.4";
 my $expectedreportsversion = "0.4.2";
 =pod
 
@@ -395,6 +395,7 @@ if($expectedreportsversion ne $RTreports::VERSION){
 $outpath = $config{outpath};
 
 # retrieve Config values
+my $server_version = "";
 my $host = $config{host};
 my $database_name = $config{database};
 my $user = $config{username};
@@ -415,6 +416,23 @@ RT->Config->Set( DatabaseUser => $user);
 RT->Config->Set( DatabasePassword => $password);;
 RT->Config->Set( LogDir => $logdir );
 RT::LoadConfig();
+
+my $ticketNumber = 5;
+my $uri = "https://helpdesk.ast.cam.ac.uk//REST/1.0/";
+
+my $ua = LWP::UserAgent->new;
+$ua->timeout(10);
+$ua->agent("YOURUSERAGENTHERE");
+
+my $response = $ua->post($uri."ticket/$ticketNumber",
+['user' => $user, 'pass' => $password],
+'Content_Type' => 'form-data');
+
+if ($response->is_success) {
+$server_version = $response->decoded_content;
+$server_version = substr($server_version, 3, 6);
+$server_version = "RT server v${server_version}" . "\n";
+}
 
 #Create the output pathway for report if it doesn't already exist
 $outpath .= "RTreports/" unless $no_folder;
@@ -450,11 +468,13 @@ $outpathforall = $outfile;
 print "Printing regular RT details to main file\n";
 #Give contextual details for report
 if ($html) {print $fh "<pre>\n"};
+print $fh "RTLastContact v$version\n";
+print $fh "-" x 30 . "\n";
 print $fh "User: " . getlogin() . "\n";
-print $fh "Server Host: $host \n"; 
-print $fh "RTLastContact $version\n";
-print $fh "RT version $RT::VERSION\n";
-print $fh "RTreports.pm $RTreports::VERSION\n";
+print $fh "Server Host: $host \n";
+print $fh $server_version;
+print $fh "RT v$RT::VERSION\n";
+print $fh "RTreports.pm v$RTreports::VERSION\n";
 print $fh localtime() . "\n"; #Date used to inform reader of when report was written
 print $fh "Logdir: ",RT->Config->Get( 'LogDir' ),"\n";
 print $fh "DatabaseType: ", RT->Config->Get( 'DatabaseType' ),"\n";
