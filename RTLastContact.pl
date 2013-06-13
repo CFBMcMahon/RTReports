@@ -1,4 +1,4 @@
-my $version = "0.5.5";
+my $version = "0.5.7";
 my $expectedreportsversion = "0.4.2";
 =pod
 
@@ -198,6 +198,7 @@ use Pod::Usage;
 use Date::Calc qw(:all);
 use DateTime;
 use File::stat;
+use File::Copy;
 
 use Fcntl qw(:mode);
 
@@ -361,7 +362,9 @@ my $outpathforall;
 my $owner;
 my $default = 'general';
 my $configfile='RTconfig.ini';
+
 $date_time = DateTime->from_epoch( epoch => time );
+my($day, $month, $year) = ($date_time->day, $date_time->month, $date_time->year);
 $date_stamp = $date_time->ymd('');
 
 my $help;
@@ -373,8 +376,7 @@ GetOptions('help|?' => \$help,
            'verbose' => \$verbose,
            'f' => \$no_folder,
            'd' => \$use_database,
-           'all' => \$allowners) or pod2usage(2);
-	  
+           'allowners' => \$allowners) or pod2usage(2);	  
 
 pod2usage(1) if $help;
 pod2usage(-exitstatus => 0, -verbose => 2) if $man;
@@ -393,6 +395,10 @@ if($expectedreportsversion ne $RTreports::VERSION){
 }
 
 $outpath = $config{outpath};
+
+my $html = 1;
+my $outfile_format = "txt";  
+if ($html) {$outfile_format = "html"};
 
 # retrieve Config values
 my $server_version = "";
@@ -430,8 +436,8 @@ my $response = $ua->post($uri."ticket/$ticketNumber",
 
 if ($response->is_success) {
 $server_version = $response->decoded_content;
-$server_version = substr($server_version, 3, 6);
-$server_version = "RT Remote Server v${server_version}" . "\n";
+#$server_version = substr($server_version, 3, 6);
+#$server_version = "RT Remote Server v${server_version}" . "\n";
 }
 
 #Create the output pathway for report if it doesn't already exist
@@ -439,30 +445,21 @@ $outpath .= "RTreports/" unless $no_folder;
 if (-e $outpath) {print 'Directory already exists: ' . $outpath . "\n"};
 
 unless (-e $outpath) {
-    print "Creating: $outpath\n";
+    print "Creating: $outpath";
     unless (mkpath($outpath)) {die "Unable to create $outpath\n"};
   }
 
 RT::Init();
 
-my $html=1;
 
 my $urlTicket = "${rturl}Ticket/Display.html?id";
 
 #File to be used for output
 my $fh;
 my $outfile;
-if ($ARGV[0]){
-    $outfile = "$outpath$ARGV[0]";
-    print "Output file for main: ", $outfile;
-    open $fh, ">", "$outfile";
-  } else {
-    my $outfile_format = "txt";  
-    if ($html) {$outfile_format = "html"};
-    $outfile = "${outpath}RTLastContact_$date_stamp.$outfile_format";
-    print "Output file for main: ", $outfile,"\n";
-    open $fh, ">", "$outfile";
-  }
+$outfile = "${outpath}RTLastContact.$outfile_format";
+print "Output file for main: ", $outfile,"\n";
+open $fh, ">", "$outfile";
 $outpathforall = $outfile;
 
 print "Printing regular RT details to main file\n";
@@ -472,7 +469,7 @@ print $fh "RTLastContact v$version\n";
 print $fh "-" x 30 . "\n";
 print $fh "User: " . getlogin() . "\n";
 print $fh "Server Host: $host \n";
-print $fh $server_version;
+print $fh "RT Remote Server v" . RTreports::get_RTserver($uri) . "\n";
 print $fh "RT Local Client v$RT::VERSION\n";
 print $fh "RTreports.pm v$RTreports::VERSION\n";
 print $fh localtime() . "\n"; #Date used to inform reader of when report was written
@@ -558,7 +555,9 @@ foreach my $user(@users){
 	next;
     }
     print "Generating query for $user and printing to main file\n";
-    my @stats; 
+    my @stats;
+  #  if($html){
+#} else {
     my $tempuser = substr($user, 0, 9);
     foreach my $time(@dates){
 	 my $temp_query; 
@@ -620,19 +619,13 @@ unless ($num_tickets < 1){
     foreach my $user(@users){
 	$query = "";
 	if($user ne "%"){
-	    if($owner){
-		next;
-	    }
 	    $query = RTreports::owner($query, $user);
-	    if ($ARGV[0]){
-		$outfile = "$outpath$user$ARGV[0]";
-		open $fh, ">", "$outfile";
-	    } else {
-		my $outfile_format = "txt";  
-		if ($html) {$outfile_format = "html"};
-		$outfile = "${outpath}RTLastContact_${date_stamp}_$user.$outfile_format";
-		open $fh, ">", "$outfile";
+            unless (-e "$outpath$user") {
+               print "Creating: $outpath$user";
+               unless (mkpath("$outpath$user")) {die "Unable to create $outpath$user\n"};
 	    }
+	    $outfile = "$outpath$user/$user.$outfile_format";
+	    open $fh, ">", "$outfile";
 	    #Give contextual details for report
 	    if ($html) {print $fh "<pre>\n"};
 	    print $fh "User: " . getlogin() . "\n";
@@ -741,7 +734,24 @@ unless ($num_tickets < 1){
 	}
 	print $fh "</pre>\n" if ($html);
 	close $fh;
-	last unless $allowners
+	    my $copy_outpath;
+	    my $copy_outfile;
+	    
+	    if($user eq '%'){
+	       $copy_outpath = "$outpath$year/$month/$day/";
+	       $copy_outfile = "${copy_outpath}RTLastContact.$outfile_format";
+            } else {
+	       $copy_outpath = "$outpath$year/$month/$day/$user/";
+               $copy_outfile = "$copy_outpath$user.$outfile_format";
+	    }
+        
+        unless (-e "$copy_outpath") {
+              print "Creating: $copy_outpath";
+              unless (mkpath("$copy_outpath")) {die "Unable to create $copy_outpath\n"};
+              }
+        copy("$outfile", "$copy_outfile");
+	last unless $allowners;
+	
     }
 }
 

@@ -93,7 +93,7 @@ package RTreports;
 
 # version number accessible as $RTreports::VERSION
 # e.g. print 'RT version: $RTreports::VERSION\n';
-our $VERSION = "0.4.2";
+our $VERSION = "0.4.3";
 
 sub owner {
     my $query = shift(@_);
@@ -198,6 +198,7 @@ sub spec_status {
     $query;
 }
 
+#Parameters are server URL
 sub get_RTserver {
     use LWP::Simple;
     my $URL_REST = shift(@_);
