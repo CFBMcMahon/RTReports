@@ -41,20 +41,43 @@ use File::Path;
 use IO::Handle qw( );  # For flush
 use List::Util qw[min max];
 use Config::Simple;
+use Pod::Usage;
+use Date::Calc qw(:all);
+use DateTime;
+use File::stat;
+use File::Copy;
+
+use Fcntl qw(:mode);
 
 use Sys::Hostname;
 my $hostname = hostname;
-print 'Hostname: ',$hostname, "\n";
+my $configfile = 'RTreports.ini';
 
 my %config;
-Config::Simple->import_from( 'RTconfig.ini', \%config) or die Config::Simple->error();
+Config::Simple->import_from( 'RTreports.ini', \%config) or die Config::Simple->error();
 
-my $host = $config{host};
-my $db = $config{database};
-my $user = $config{username};
-my $pass = $config{password};
-my $type = $config{type};
-my $outpath = $config{outpath};
+print 'Hostname: ',$hostname, "\n";
+
+
+my $host = $config{"RTreports.host"};
+my $db = $config{"RTreports.database"};
+my $user = $config{"RTreports.username"};
+my $pass = $config{"RTreports.password"};
+my $type = $config{"RTreports.type"};
+my $outpath = $config{"BarCharts.outpath"};
+my ($help, $no_folder, $this_month);
+
+GetOptions('help|?' => \$help, 
+           'nofolder' => \$no_folder,
+           'month' => \$this_month,
+          );	
+
+
+my $mode = stat($configfile)->mode;
+
+my $allCanRead = ($mode & S_IROTH);  # Others can read
+
+if ($allCanRead) {print '**WARNING** Config file: ' . $configfile . ' is world readable' . "\n"};
 
 print 'Running: ',$0, "\n";
 use Cwd 'abs_path';
@@ -82,26 +105,17 @@ my $timestamp = sprintf("%04d%02d%02d-%2d:%2d:%2d",$year+1900,$mon+1,$mday,$hour
 print 'datestamp: ',$datestamp,"\n";   
 print 'timestamp: ',$timestamp,"\n";    
 
-# SETTINGS - CUSTOMISE THESE
-
-
-   # DATABASE - CUSTOMISE THESE
-
-   my $dbh = DBI->connect("dbi:$type:".$db.';host='.$host,$user,$pass)
+my $dbh = DBI->connect("dbi:$type:".$db.';host='.$host,$user,$pass)
    or die "Connection Error: $DBI::errstr\n";
 
 my $start_date;
 $start_date=$yearstamp . '-' . $monthstamp;
-#$start_date="2012-03";
-#$start_date="2010-12";
-#$start_date="2011-12";
 
 print "start_date: $start_date\n";
 
-#my $outpath = '/home/rgm/public_html/coc/rt-metrics/2010/';
-#my $outpath = '/home/rgm/public_html/coc/rt-metrics/2011/';
+$outpath .= "/RTReports" unless $no_folder;
 
-my $outpath_archive = $outpath . 
+my $outpath_archive = $outpath .
   $yearstamp . '/' . $datestamp . "/";
 
 if (-e $outpath || $verbose) {print 'Directory already exists: ' . $outpath . "\n"};
@@ -144,68 +158,32 @@ unless (-e $currentstatusfile) {
 }
 open(STATUSFILE, $currentstatusfile) or die $!;
 
-   my $queue='Purchasing'; # RT queue to operate on
-   my $queue='Change Control'; # RT queue to operate on
-   my $queue='Informational'; # RT queue to operate on
-   my $queue='IoA'; # RT queue to operate on
-
-   my $queue='Informational'; # RT queue to operate on
-
-   my @queues = (q('Change Control'), q('IoA'), q('Purchasing'), q('Informational') ); # works
-
-my @queues = (q('%'), q('IoA'), q('Purchasing'), 
-     q('Web Development'), q('Old Web Development'), 
-     q('Informational'),q('Change Control'), q('Planning'), 
-     q('Mini-projects'),q('Major Projects'),
-     q('GAIA'),q('Kavli'),q('General'),
-     q('Beltane'),q('Action Items')); # works
-
-my @queues = (q('%'), q('IoA'), q('Purchasing'));
-#my @queues = (q('%'), q('IoA'));
-my @queues = (q('IoA'));
-#my @queues = (q('IoA'), q('Purchasing'));
-#my @queues = (q('Informational') ); # works
-#my @queues=(q('Planning')); # RT queue to operate on
-#my @queues=(q('%')); # RT queue to operate on
-
-my @queues = split(',', $config{queue});
+my @queues = split(',', $config{"BarCharts.queue"});
+#@queues = 1 or die "More than one queue was specified in config";
 foreach (@queues){
     s/\A\s+//;
     s/\s+\z//;
     $_ = "'$_'";
 }
 
-
-
-my @owners = (q('adb'), q('gbell'), q('nrm'),q('sc'),q('atb'),q('hss'));
-my @owners = (q('adb'), q('gbell'), q('nrm'),q('sc'));
-my $user = 'rgm';
-my $owner = q('%');
-my @owners = (q('%'),q('adb'), q('gbell'), q('nrm'),q('sc'),q('atb'),q('hss'));
-# 2012-12-12: rgm added rmj
-my @owners = (q('%'),q('adb'), q('gbell'), q('nrm'),q('sc'),q('rmj'));
-
-my @owners = split(',', $config{owners});
+my @owners = split(',', $config{"BarCharts.owners"});
     foreach (@owners){
 	s/\A\s+//;
 	s/\s+\z//;
 	$_ = "'$_'";
     } 
 
-my $cycles=12; # how many months to report on
+my $cycles = $config{"BarCharts.cycles"}; # how many months to report on
 my $thismonth=1; # include current month in graph?
-
-my $test=1;
-my $test=0;
-#$test=1;
-if ($test) {$cycles=6};
-   
-   
+ 
    # GRAPH DIMENSIONS - CUSTOMISE THESE
    #   (340,000 [X x Y] pixel maximum)
-   my $chartx=850;
-   my $charty=350;
+   my $chartx= $config{"BarCharts.sizeX"};
+   my $charty= $config{"BarCharts.sizeY"};
    die "Chart area $chartx * $charty is greater than 340,000 pixles - google will reject it\n" if $charty * $chartx > 340000;
+   if($chartx < 0 || $charty < 0){
+       die "Chart area less than zero\n";
+   }
    
    #====================================================
    # DON'T TOUCH ANYTHING BELOW HERE
@@ -480,7 +458,7 @@ foreach my $queue (@queues) {
                         users.Name not like 'MaiLnX%' AND   
    			  ti.queue = qu.id 
                         and
-                            qu.name like  $queue
+                            qu.name like $queue
                         and
    				tr.type='Status'
    			and
