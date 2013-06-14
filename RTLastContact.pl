@@ -1,4 +1,4 @@
-my $version = "0.5.7";
+my $version = "0.5.8";
 my $expectedreportsversion = "0.4.2";
 =pod
 
@@ -199,8 +199,10 @@ use Date::Calc qw(:all);
 use DateTime;
 use File::stat;
 use File::Copy;
-
 use Fcntl qw(:mode);
+
+use Sys::Hostname;
+
 
 #Change lib path to working directory of RT
 use lib '/usr/share/request-tracker4/lib/'; 
@@ -361,7 +363,7 @@ my $use_database;
 my $outpathforall;
 my $owner;
 my $default = 'general';
-my $configfile='RTconfig.ini';
+my $configfile='RTreports.ini';
 
 $date_time = DateTime->from_epoch( epoch => time );
 my($day, $month, $year) = ($date_time->day, $date_time->month, $date_time->year);
@@ -374,8 +376,8 @@ GetOptions('help|?' => \$help,
 	   'man' => \$man,
            'owner=s' => \$specific_owner,
            'verbose' => \$verbose,
-           'f' => \$no_folder,
-           'd' => \$use_database,
+           'nofolder' => \$no_folder,
+           'database' => \$use_database,
            'allowners' => \$allowners) or pod2usage(2);	  
 
 pod2usage(1) if $help;
@@ -394,7 +396,7 @@ if($expectedreportsversion ne $RTreports::VERSION){
     print "**WARNING** Expected RTreports $expectedreportsversion, got RTreports $RTreports::VERSION\n";
 }
 
-$outpath = $config{outpath};
+$outpath = $config{"LastContact.outpath"};
 
 my $html = 1;
 my $outfile_format = "txt";  
@@ -402,15 +404,15 @@ if ($html) {$outfile_format = "html"};
 
 # retrieve Config values
 my $server_version = "";
-my $host = $config{host};
-my $database_name = $config{database};
-my $user = $config{username};
-my $password = $config{password};
-my $type = $config{type};
-my $logdir = $config{logdir};
-my $num_tickets = $config{number_of_tickets};
-my $rturl = $config{rturl};
-#my $lib = $config{lib};
+my $host = $config{"RTreports.host"};
+my $database_name = $config{"RTreports.database"};
+my $user = $config{"RTreports.username"};
+my $password = $config{"RTreports.password"};
+my $type = $config{"RTreports.type"};
+my $logdir = $config{"LastContact.logdir"};
+my $num_tickets = $config{"LastContact.number_of_tickets"};
+my $rturl = $config{"LastContact.rturl"};
+my $rturi = $config{"RTreports.rturi"};
 
 print "RT server hostname: $host\n";
 
@@ -424,13 +426,12 @@ RT->Config->Set( LogDir => $logdir );
 RT::LoadConfig();
 
 my $ticketNumber = 5;
-my $uri = "https://helpdesk.ast.cam.ac.uk//REST/1.0/";
 
 my $ua = LWP::UserAgent->new;
 $ua->timeout(10);
 $ua->agent("YOURUSERAGENTHERE");
 
-my $response = $ua->post($uri."ticket/$ticketNumber",
+my $response = $ua->post($rturi."ticket/$ticketNumber",
 ['user' => $user, 'pass' => $password],
 'Content_Type' => 'form-data');
 
@@ -441,7 +442,10 @@ $server_version = $response->decoded_content;
 }
 
 #Create the output pathway for report if it doesn't already exist
-$outpath .= "RTreports/" unless $no_folder;
+
+$outpath =~ s/\/*\z//;
+
+$outpath .= "/RTreports/" unless $no_folder;
 if (-e $outpath) {print 'Directory already exists: ' . $outpath . "\n"};
 
 unless (-e $outpath) {
@@ -469,7 +473,7 @@ print $fh "RTLastContact v$version\n";
 print $fh "-" x 30 . "\n";
 print $fh "User: " . getlogin() . "\n";
 print $fh "Server Host: $host \n";
-print $fh "RT Remote Server v" . RTreports::get_RTserver($uri) . "\n";
+print $fh "RT Remote Server v" . RTreports::get_RTserver($rturi) . "\n";
 print $fh "RT Local Client v$RT::VERSION\n";
 print $fh "RTreports.pm v$RTreports::VERSION\n";
 print $fh localtime() . "\n"; #Date used to inform reader of when report was written
@@ -480,17 +484,17 @@ print $fh "DatabaseType: ", RT->Config->Get( 'DatabaseType' ),"\n";
 
 my @queue;
 
-if($config{queue}){
-	@queue = split(',', $config{queue});
+if($config{"LastContact.queue"}){
+	@queue = split(',', $config{"LastContact.queue"});
 	foreach (@queue){
 	    s/\A\s+//;
 	    s/\s+\z//;
 	}
 }
 
-print $fh "Queues: " . $config{queue} ."\n"; #Value taken from config}
+print $fh "Queues: " . $config{"LastContact.queue"} ."\n"; #Value taken from config}
 
-print "Queues: " . $config{queue} ."\n" if $verbose;
+print "Queues: " . $config{"LastContact.queue"} ."\n" if $verbose;
 
 #Construct our tickets object
 
@@ -505,7 +509,7 @@ if($specific_owner){
 	s/\A\s+//;
 	s/\s+\z//;
     } 
-} elsif ($use_database || !$config{owners}){
+} elsif ($use_database || !$config{"LastContact.owners"}){
     my $Users = RT::Users->new( RT->SystemUser );
 $Users->WhoHaveRight(
         Right               => 'OwnTicket',
@@ -517,7 +521,7 @@ $Users->WhoHaveRight(
     push(@users, 'nobody');
 
 } else {
-    @users = split(',', $config{owners});
+    @users = split(',', $config{"LastContact.owners"});
     foreach (@users){
 	s/\A\s+//;
 	s/\s+\z//;
@@ -526,21 +530,21 @@ $Users->WhoHaveRight(
 print "Owners to be used: " . @users . "\n" if $verbose; 
 
 my @not_requestors;
-@not_requestors = split(',', $config{not_requestor});
+@not_requestors = split(',', $config{"LastContact.not_requestor"});
 foreach (@not_requestors){
 	s/\A\s+//;
 	s/\s+\z//;
     } 
-print "additional requestors to be excluded: " . $config{not_requestor} . "\n" if $verbose;
+print "additional requestors to be excluded: " . $config{"LastContact.not_requestor"} . "\n" if $verbose;
 
-my @exclude_statuses = split(',', $config{exclude_statuses});
+my @exclude_statuses = split(',', $config{"LastContact.exclude_statuses"});
 foreach (@exclude_statuses){
     s/\A\s+//;
     s/\s+\z//;
 }
-print "Statuses to be excluded: ". $config{exclude_statuses} . "\n" if $verbose;
+print "Statuses to be excluded: ". $config{"LastContact.exclude_statuses"} . "\n" if $verbose;
 
-print $fh "Statuses to be excluded: ". $config{exclude_statuses} . "\n";
+print $fh "Statuses to be excluded: ". $config{"LastContact.exclude_statuses"} . "\n";
 
 print "Printing basic table details to main file\n";
 
@@ -663,7 +667,7 @@ unless ($num_tickets < 1){
 	if ($num_tickets > $sqltickets->Count()){
 	    $count =  $sqltickets->Count();
 	} else {
-	    $count = $config{number_of_tickets}
+	    $count = $config{"LastContact.number_of_tickets"}
 	};
 	my $User_name = RT::User->new($RT::SystemUser);
 	my $queue_database = new RT::Queue($RT::SystemUser);

@@ -113,7 +113,9 @@ $start_date=$yearstamp . '-' . $monthstamp;
 
 print "start_date: $start_date\n";
 
-$outpath .= "/RTReports" unless $no_folder;
+$outpath =~ s/\/*\z//;
+
+$outpath .= "/RTReports/" unless $no_folder;
 
 my $outpath_archive = $outpath .
   $yearstamp . '/' . $datestamp . "/";
